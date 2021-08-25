@@ -17,6 +17,17 @@ exports.createPost = (req, res, next) => {
     });
 };
 
+exports.editPost = (req, res, next) => {
+  const postId = req.params.postId;
+  Post.findOneAndUpdate({ _id: postId }, req.body, { new: true })
+    .then((data) => {
+      res.status(204).json(data);
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
 exports.getFeed = (req, res, next) => {
   Post.find({ isPrivate: false })
     .then((data) => {
