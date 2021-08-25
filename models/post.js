@@ -23,7 +23,9 @@ const postSchema = new mongoose.Schema(
     },
     creator: {
       _id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-      email: { type: String, ref: "User" },
+      userName: { type: String, ref: "User" },
+      firstName: { type: String, ref: "User" },
+      lastName: { type: String, ref: "User" },
     },
   },
   { timestamps: true }

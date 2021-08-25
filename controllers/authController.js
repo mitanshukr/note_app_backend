@@ -39,20 +39,22 @@ exports.postLogin = (req, res, next) => {
           email: requestedUser.email,
           userId: requestedUser._id.toString(),
           message:
-            "Do not share the Token with anyone. Token is valid for an hour.",
+            "Do not share the Token with anyone. Token is valid for 2 hours.",
         },
         process.env.JWT_SECRET,
-        { expiresIn: "1h" }
+        { expiresIn: "2h" }
       );
       res.status(200).json({
-        token: token,
+        authToken: token,
+        expiresIn: 7200, //value in Seconds.
         userId: requestedUser._id,
+        email: requestedUser.email,
         userName: requestedUser.userName,
         firstName: requestedUser.firstName,
         lastName: requestedUser.lastName,
         isEmailVerified: requestedUser.isEmailVerified,
         message:
-          "Do not share the Token with anyone. Token is valid for an hour.",
+          "Do not share the Token with anyone. Token is valid for 2 hours.",
       });
     })
     .catch((err) => {
