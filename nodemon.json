@@ -1,8 +1,0 @@
-{
-    "env": {
-        "MONGO_USER": "mitanshu",
-        "MONGO_PASSWORD": "Mitanshu123",
-        "MONGO_DEFAULT_DATABASE": "note_app_react",
-        "JWT_SECRET": "c523^387yhff48j*&$a43^DH(#H)hdedhffsekret:;6"
-    }
-}
