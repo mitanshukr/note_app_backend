@@ -19,9 +19,17 @@ exports.createPost = (req, res, next) => {
 
 exports.editPost = (req, res, next) => {
   const postId = req.params.postId;
-  Post.findOneAndUpdate({ _id: postId }, req.body, { new: true })
+  Post.findOneAndUpdate({ _id: postId, "creator._id": req.userId }, req.body, {
+    new: true,
+  })
     .then((data) => {
-      res.status(204).json(data);
+      if (!data) {
+        const error = new Error("403: Forbidden");
+        error.status = 403;
+        throw error;
+      } else {
+        res.status(204).json(data);
+      }
     })
     .catch((err) => {
       next(err);
