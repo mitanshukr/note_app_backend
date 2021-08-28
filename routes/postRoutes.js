@@ -14,4 +14,5 @@ router.get("/all/:userId", isAuth, postController.getUserPosts); // GET /all/:us
 router.get("/:postId", postController.getSinglePost); // GET /:postId
 router.get("/private/:postId", isAuth, postController.getSinglePrivatePost); // GET /private/:postId
 
+router.get("/togglelike/:postId", isAuth, postController.postLike);
 module.exports = router;

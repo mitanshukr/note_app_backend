@@ -1,4 +1,5 @@
 const Post = require("../models/post");
+const User = require("../models/user");
 
 exports.createPost = (req, res, next) => {
   const newPost = new Post({
@@ -94,6 +95,48 @@ exports.getSinglePrivatePost = (req, res, next) => {
         throw error;
       }
       res.status(200).json(data);
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+exports.postLike = (req, res, next) => {
+  const postId = req.params.postId;
+  const userId = req.userId;
+  let message = null;
+  Post.findOne({ _id: postId })
+    .then((post) => {
+      const userIdIndex = post.likes.findIndex(
+        (id) => id.toString() === userId.toString()
+      );
+      if (userIdIndex >= 0) {
+        post.likes.splice(userIdIndex, 1);
+      } else {
+        post.likes.push(userId);
+      }
+      post.save();
+      return User.findOne({ _id: userId });
+    })
+    .then((user) => {
+      const postIdIndex = user.likes.findIndex(
+        (id) => id.toString() === postId.toString()
+      );
+      if (postIdIndex >= 0) {
+        user.likes.splice(postIdIndex, 1);
+        message = "Post Like removed Successfully!";
+      } else {
+        user.likes.push(postId);
+        message = "Post Liked Successfully!";
+      }
+      return user.save();
+    })
+    .then(() => {
+      res.status(202).json({
+        message: message,
+        postId: postId,
+        userId: userId,
+      });
     })
     .catch((err) => {
       next(err);

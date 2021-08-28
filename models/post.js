@@ -21,6 +21,7 @@ const postSchema = new mongoose.Schema(
       type: "Boolean",
       required: true,
     },
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }],
     creator: {
       _id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       userName: { type: String, ref: "User" },
