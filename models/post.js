@@ -21,7 +21,10 @@ const postSchema = new mongoose.Schema(
       type: "Boolean",
       required: true,
     },
-    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", default: null }],
+    likes: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    ],
+    viewCount: { type: "Number", default: 0 },
     creator: {
       _id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       userName: { type: String, ref: "User" },

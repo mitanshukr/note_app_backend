@@ -150,3 +150,20 @@ exports.postLike = (req, res, next) => {
       next(err);
     });
 };
+
+exports.postView = (req, res, next) => {
+  const postId = req.params.postId;
+  Post.findOne({ _id: postId })
+    .then((post) => {
+      post.viewCount++;
+      return post.save();
+    })
+    .then((response) => {
+      res.status(204).json({
+        message: "View Added",
+      });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
