@@ -105,6 +105,7 @@ exports.postLike = (req, res, next) => {
   const postId = req.params.postId;
   const userId = req.userId;
   let message = null;
+  let likeStatus = null;
   Post.findOne({ _id: postId })
     .then((post) => {
       const userIdIndex = post.likes.findIndex(
@@ -112,8 +113,10 @@ exports.postLike = (req, res, next) => {
       );
       if (userIdIndex >= 0) {
         post.likes.splice(userIdIndex, 1);
+        likeStatus = false;
       } else {
         post.likes.push(userId);
+        likeStatus = true;
       }
       post.save();
       return User.findOne({ _id: userId });
@@ -122,18 +125,23 @@ exports.postLike = (req, res, next) => {
       const postIdIndex = user.likes.findIndex(
         (id) => id.toString() === postId.toString()
       );
-      if (postIdIndex >= 0) {
-        user.likes.splice(postIdIndex, 1);
-        message = "Post Like removed Successfully!";
-      } else {
-        user.likes.push(postId);
-        message = "Post Liked Successfully!";
+      if (likeStatus) {
+        message = "Post liked Successfully!";
+        if (postIdIndex < 0) {
+          user.likes.push(postId);
+        }
+      } else if (!likeStatus) {
+        message = "Post like removed Successfully!";
+        if (postIdIndex >= 0) {
+          user.likes.splice(postIdIndex, 1);
+        }
       }
       return user.save();
     })
     .then(() => {
       res.status(202).json({
         message: message,
+        likeStatus: likeStatus,
         postId: postId,
         userId: userId,
       });
