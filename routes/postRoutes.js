@@ -16,4 +16,5 @@ router.get("/private/:postId", isAuth, postController.getSinglePrivatePost); // 
 
 router.get("/togglelike/:postId", isAuth, postController.postLike);
 router.get("/addview/:postId", postController.postView);
+router.get("/togglesave/:postId", isAuth, postController.savePost);
 module.exports = router;

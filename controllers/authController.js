@@ -53,6 +53,7 @@ exports.postLogin = (req, res, next) => {
         firstName: requestedUser.firstName,
         lastName: requestedUser.lastName,
         isEmailVerified: requestedUser.isEmailVerified,
+        savedPosts: requestedUser.savedPosts,
         message:
           "Do not share the Token with anyone. Token is valid for 2 hours.",
       });

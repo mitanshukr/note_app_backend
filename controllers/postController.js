@@ -167,3 +167,36 @@ exports.postView = (req, res, next) => {
       next(err);
     });
 };
+
+exports.savePost = (req, res, next) => {
+  const postId = req.params.postId;
+  let postSaved = null;
+  let message = null;
+  User.findOne({ _id: req.userId })
+    .then((user) => {
+      const postIdIndex = user.savedPosts.findIndex(
+        (id) => id.toString() === postId.toString()
+      );
+      if (postIdIndex >= 0) {
+        user.savedPosts.splice(postIdIndex, 1);
+        postSaved = false;
+        message = "Post removed from Saved Items.";
+      } else {
+        user.savedPosts.push(postId);
+        postSaved = true;
+        message = "Post added to Saved Items.";
+      }
+      return user.save();
+    })
+    .then((user) => {
+      res.status(202).json({
+        postSaved: postSaved,
+        message: message,
+        postId: postId,
+        userId: req.userId,
+      });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};

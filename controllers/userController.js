@@ -10,6 +10,7 @@ exports.getUser = (req, res, next) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        savedPosts: user.savedPosts,
         isEmailVerified: user.isEmailVerified,
       });
     })

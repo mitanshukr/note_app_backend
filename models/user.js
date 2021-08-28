@@ -25,6 +25,7 @@ const userSchema = new mongoose.Schema({
     default: null,
   },
   likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post", default: null }],
+  savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post", default: null }],
   resetTokenExpiry: { type: Date },
   isEmailVerified: Boolean,
   verificationToken: { type: String },
