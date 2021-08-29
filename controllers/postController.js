@@ -200,3 +200,18 @@ exports.savePost = (req, res, next) => {
       next(err);
     });
 };
+
+exports.getSavedPosts = (req, res, next) => {
+  User.findOne({ _id: req.userId })
+    .then((user) => {
+      return [...user.savedPosts];
+    })
+    .then((savedPosts) => {
+      Post.find({ _id: { $in: savedPosts } }).then((posts) => {
+        res.status(200).json(posts);
+      });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
