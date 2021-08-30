@@ -78,7 +78,8 @@ exports.getSinglePost = (req, res, next) => {
   const postId = req.params.postId;
   Post.findOne({ _id: postId, isPrivate: false })
     .then((data) => {
-      res.status(200).json(data);
+      if (!data) res.status(404).json({ message: "No Post Found!" });
+      else res.status(200).json(data);
     })
     .catch((err) => {
       next(err);
@@ -94,7 +95,8 @@ exports.getSinglePrivatePost = (req, res, next) => {
         error.status = 403;
         throw error;
       }
-      res.status(200).json(data);
+      if (!data) res.status(404).json({ message: "No Post Found!" });
+      else res.status(200).json(data);
     })
     .catch((err) => {
       next(err);
@@ -209,6 +211,51 @@ exports.getSavedPosts = (req, res, next) => {
     .then((savedPosts) => {
       Post.find({ _id: { $in: savedPosts } }).then((posts) => {
         res.status(200).json(posts);
+      });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+exports.deletePost = (req, res, next) => {
+  const postId = req.params.postId;
+  Post.findOneAndDelete({ _id: postId, "creator._id": req.userId })
+    .then((deletedPost) => {
+      if (!deletedPost)
+        res
+          .status(403)
+          .json({ message: "No Post Found or Unauthentic request." });
+      else
+        return User.find({
+          $or: [
+            { likes: { $in: [deletedPost._id] } },
+            { savedPosts: { $in: [deletedPost._id] } },
+          ],
+        });
+    })
+    .then((users) => {
+      if (!users || users?.length === 0) return;
+      users.forEach((user) => {
+        let postIdIndex = user.likes.findIndex(
+          (p_id) => p_id.toString() === postId.toString()
+        );
+        if (postIdIndex !== -1) {
+          user.likes.splice(postIdIndex, 1);
+        }
+        postIdIndex = user.savedPosts.findIndex(
+          (p_id) => p_id.toString() === postId.toString()
+        );
+        if (postIdIndex !== -1) {
+          user.savedPosts.splice(postIdIndex, 1);
+        }
+        user.save();
+      });
+    })
+    .then(() => {
+      res.status(204).json({
+        status: 204,
+        message: `Post: {${postId}} deleted successfully!`,
       });
     })
     .catch((err) => {

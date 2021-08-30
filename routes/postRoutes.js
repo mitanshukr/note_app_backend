@@ -5,7 +5,7 @@ const isAuth = require("../middleware/isAuth");
 const postController = require("../controllers/postController");
 
 router.post("/create", isAuth, postController.createPost);
-// DELETE /delete/:postId
+router.delete("/delete/:postId", isAuth, postController.deletePost); // DELETE /delete/:postId
 
 router.patch("/edit/:postId", isAuth, postController.editPost); // PATCH /edit/:postId
 
@@ -18,7 +18,5 @@ router.get("/togglelike/:postId", isAuth, postController.postLike);
 router.get("/addview/:postId", postController.postView);
 router.get("/togglesave/:postId", isAuth, postController.savePost);
 router.get("/saveditems", isAuth, postController.getSavedPosts);
-
-
 
 module.exports = router;
