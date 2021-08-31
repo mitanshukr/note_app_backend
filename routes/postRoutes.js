@@ -11,12 +11,16 @@ router.patch("/edit/:postId", isAuth, postController.editPost); // PATCH /edit/:
 
 router.get("/feed/all", postController.getFeed); // GET /feed/all
 router.get("/all/:userId", isAuth, postController.getUserPosts); // GET /all/:userId?private=true
+router.get("/public/all/:username", postController.getPublicPosts);
 router.get("/private/:postId", isAuth, postController.getSinglePrivatePost); // GET /private/:postId
 router.get("/public/:postId", postController.getSinglePost); // GET /public/:postId
+router.get("/likedpost/all/:username", postController.getLikedPosts);
 
 router.get("/togglelike/:postId", isAuth, postController.postLike);
 router.get("/addview/:postId", postController.postView);
 router.get("/togglesave/:postId", isAuth, postController.savePost);
 router.get("/saveditems", isAuth, postController.getSavedPosts);
+
+
 
 module.exports = router;

@@ -262,3 +262,51 @@ exports.deletePost = (req, res, next) => {
       next(err);
     });
 };
+
+exports.getLikedPosts = (req, res, next) => {
+  if (req.params.username[0] !== "@") {
+    const error = new Error("Invalid Username. Please add prefix @");
+    error.status = 422;
+    throw error;
+  }
+  const username = req.params.username.slice(1);
+  User.findOne({ userName: username })
+    .then((user) => {
+      if (!user) {
+        const error = new Error("User not Found");
+        error.status = 404;
+        throw error;
+      }
+      return Post.find({ _id: { $in: user.likes }, isPrivate: false });
+    })
+    .then((posts) => {
+      res.status(200).json(posts);
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+exports.getPublicPosts = (req, res, next) => {
+  if (req.params.username[0] !== "@") {
+    const error = new Error("Invalid Username. Please add prefix @");
+    error.status = 422;
+    throw error;
+  }
+  const username = req.params.username.slice(1);
+  User.findOne({ userName: username })
+    .then((user) => {
+      if (!user) {
+        const error = new Error("User not Found");
+        error.status = 404;
+        throw error;
+      }
+      return Post.find({ "creator._id": user._id, isPrivate: false });
+    })
+    .then((posts) => {
+      res.status(200).json(posts);
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
