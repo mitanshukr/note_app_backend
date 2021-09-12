@@ -59,9 +59,6 @@ exports.postLogin = (req, res, next) => {
       });
     })
     .catch((err) => {
-      if (!err.status) {
-        err.status = 500;
-      }
       next(err);
     });
 };
@@ -111,11 +108,90 @@ exports.postSignup = (req, res, next) => {
     })
     .then((user) => {
       console.log(user);
+      //TO-DO: send mail to registered email id with elcome message and veritification URL.
     })
     .catch((err) => {
-      if (!err.status) {
-        err.status = 500;
+      next(err);
+    });
+};
+
+exports.initForgotPassword = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new Error("Input Validation Failed!");
+    error.status = 422;
+    error.data = errors.array();
+    throw error;
+  }
+  const email = req.body.email;
+  User.findOne({ email: email })
+    .then((user) => {
+      if (!user) {
+        const error = new Error("No User found with the provided Email.");
+        error.status = 404;
+        throw error;
       }
+      user.resetToken = crypto.randomBytes(32).toString("hex");
+      user.resetTokenExpiry = Date.now() + 3600 * 1000; // expiryIn: 1hr (3600*1000 ms)
+      return user.save();
+    })
+    .then((user) => {
+      // res.status(200).json(user);
+      //TO-DO: send mail to registered email with reset URL.
+      res.status(200).json({
+        email: user.email,
+        message: "Reset Link is sent to your Inbox. Valid for an Hour.",
+      });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+exports.updatePassword = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new Error("Input Validation Failed!");
+    error.status = 422;
+    error.data = errors.array();
+    throw error;
+  }
+
+  const userId = req.body.userId;
+  const resetToken = req.body.resetToken;
+  const newPassword = req.body.newPassword;
+
+  User.findOne({ _id: userId })
+    .then((user) => {
+      if (!user || user?.resetToken !== resetToken) {
+        const error = new Error("Invalid URL! Make sure the URL is correct.");
+        error.status = 400;
+        throw error;
+      }
+      if (user.resetTokenExpiry <= Date.now()) {
+        const error = new Error("Reset URL Expired.");
+        error.status = 410;
+        throw error;
+      }
+      return bcrypt
+        .hash(newPassword, 12)
+        .then((hashedPwd) => {
+          user.password = hashedPwd;
+          return user.save();
+        })
+        .catch((err) => {
+          next(err);
+        });
+    })
+    .then((updatedUser) => {
+      //TO-DO: send mail to registered email with password change notification.
+      res.status(200).json({
+        message: "Password Updated Successfully!",
+        userId: updatedUser._id,
+        email: updatedUser.email,
+      });
+    })
+    .catch((err) => {
       next(err);
     });
 };
