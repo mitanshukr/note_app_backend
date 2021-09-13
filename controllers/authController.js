@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
+const transport = require("../middleware/mailer-sendgrid");
 
 const User = require("../models/user");
 const { getRandomInt } = require("../utils/randomNumGenerator");
@@ -89,26 +90,67 @@ exports.postSignup = (req, res, next) => {
         isEmailVerified: false,
         verificationToken: crypto.randomBytes(32).toString("hex"),
       });
-      return newUser.save();
+      return newUser.save().then((user) => {
+        return transport.sendMail({
+          to: user.email,
+          from: process.env.SENDGRID_EMAIL,
+          subject: "Sign up Successful!",
+          html: `<h3>Welcome ${
+            user.firstName
+          } to <strong>Immune Ink</strong></h3>
+                  <p><a href="${
+                    process.env.ROOT_URL
+                  }/auth/verify-email/${user._id.toString()}/${
+            user.verificationToken
+          }">Please click here to verify your email.</a></p>
+                  <p>We wish you a great journey ahead!</p>
+                  <small>Confidential. Please do not share.</small>`,
+        });
+      });
     })
-    .then((user) => {
+    .then((mailStatus) => {
       res.status(201).json({
         message: "Signup Successful!",
+        emailStatus: mailStatus,
         verification: `Please follow the link sent to your inbox to verify your Email.`,
         data: {
-          _id: user._id,
-          userName: user.userName,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          isEmailVerified: user.isEmailVerified,
+          userName: userName,
+          email: email,
+          firstName: firstName,
+          lastName: lastName,
+          isEmailVerified: false,
         },
       });
-      return user;
     })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+exports.getEmailVerified = (req, res, next) => {
+  const userId = req.params.userId;
+  const verificationToken = req.params.verificationToken;
+
+  User.findOne({ _id: userId })
     .then((user) => {
-      console.log(user);
-      //TO-DO: send mail to registered email id with elcome message and veritification URL.
+      if (user.isEmailVerified) {
+        return "ALREADY_VERIFIED";
+      }
+      if (!user || user?.verificationToken !== verificationToken) {
+        const error = new Error("Invalid URL! Make sure the URL is correct.");
+        error.status = 400;
+        throw error;
+      }
+      user.isEmailVerified = true;
+      user.verificationToken = null;
+      return user.save();
+    })
+    .then((data) => {
+      res.status(200).json({
+        status: 200,
+        message: data?.isEmailVerified ? "SUCCESS" : data?.message,
+        userId: userId,
+      });
     })
     .catch((err) => {
       next(err);
@@ -133,17 +175,37 @@ exports.initForgotPassword = (req, res, next) => {
       }
       user.resetToken = crypto.randomBytes(32).toString("hex");
       user.resetTokenExpiry = Date.now() + 3600 * 1000; // expiryIn: 1hr (3600*1000 ms)
-      return user.save();
+      return user.save().then((user) => {
+        return transport.sendMail({
+          to: user.email,
+          from: process.env.SENDGRID_EMAIL,
+          subject: "Password Reset Link",
+          html: `<h3>Hi ${user.firstName},</h3>
+                  <p>Please find the Password Reset link below. Click on the link to reset your password.</p>
+                  <p><a href="${
+                    process.env.FRONTEND_ROOT_URL
+                  }/reset-password/${user._id.toString()}/${
+            user.resetToken
+          }">Please click here to set a new Password.</a></p>
+          <p>Note that, this link is valid for only 1hr.</p>
+          <small>If you did not send the request, please ignore this mail.</small>
+          <hr>
+          <small>Confidential. Please do not share. This email is sent to ${
+            user.email
+          }</small><br><br>
+          <small>If you are not the intended recipient of this message, you are not authorized to read, print, retain, copy or disseminate any part of this message. If you have received this message in error, please destroy and delete all copies and notify the sender by return e-mail. Regardless of content, this e-mail shall not operate to bind Immune Ink Company or any of its affiliates to any order or other contract unless pursuant to explicit written agreement or government initiative expressly permitting the use of e-mail for such purpose.</small>`,
+        });
+      });
     })
-    .then((user) => {
-      // res.status(200).json(user);
-      //TO-DO: send mail to registered email with reset URL.
+    .then((mailStatus) => {
       res.status(200).json({
-        email: user.email,
+        emailStatus: mailStatus.message,
+        email: email,
         message: "Reset Link is sent to your Inbox. Valid for an Hour.",
       });
     })
     .catch((err) => {
+      console.log(err);
       next(err);
     });
 };
@@ -177,6 +239,8 @@ exports.updatePassword = (req, res, next) => {
         .hash(newPassword, 12)
         .then((hashedPwd) => {
           user.password = hashedPwd;
+          user.resetToken = null;
+          user.resetTokenExpiry = null;
           return user.save();
         })
         .catch((err) => {
@@ -184,11 +248,21 @@ exports.updatePassword = (req, res, next) => {
         });
     })
     .then((updatedUser) => {
-      //TO-DO: send mail to registered email with password change notification.
       res.status(200).json({
         message: "Password Updated Successfully!",
+        status: "SUCCESS",
         userId: updatedUser._id,
         email: updatedUser.email,
+      });
+      return transport.sendMail({
+        to: updatedUser.email,
+        from: process.env.SENDGRID_EMAIL,
+        subject: "Password updated Successfully!",
+        html: `<h3>Hi ${updatedUser.firstName},</h3>
+              <p>Your Password is successfully updated/changed.</p><br>
+              <p>Thank you,<br>Team Immune Ink.</p>
+              <hr>
+              <small>If you did not change your password, then immediately report to us.</small>`,
       });
     })
     .catch((err) => {

@@ -55,6 +55,11 @@ router.post("/reset-password", [
       ? Promise.reject("Invalid UserId! Make Sure the URL is Correct.")
       : Promise.resolve();
   }),
+  body("resetToken")
+      .trim()
+      .not()
+      .isEmpty()
+      .withMessage("Please provide a Reset Token."),
   body("newPassword")
     .trim()
     .isLength({ min: 5 })
@@ -63,5 +68,10 @@ router.post("/reset-password", [
     .withMessage("Password must contain a number."),
   authController.updatePassword,
 ]);
+
+router.get(
+  "/verify-email/:userId/:verificationToken",
+  authController.getEmailVerified
+);
 
 module.exports = router;

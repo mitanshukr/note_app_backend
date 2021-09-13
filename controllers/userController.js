@@ -1,9 +1,15 @@
 const User = require("../models/user");
+const mongoose = require("mongoose");
 
 exports.getUser = (req, res, next) => {
   const userId = req.params.userId;
   User.findOne({ _id: userId })
     .then((user) => {
+      if (!user) {
+        const error = new Error("User not Found");
+        error.status = 404;
+        throw error;
+      }
       res.status(200).json({
         userId: user._id,
         userName: user.userName,
@@ -40,6 +46,32 @@ exports.getUserByUsername = (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         about: user.about,
+      });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+exports.getBasicInfo = (req, res, next) => {
+  const userId = req.params.userId;
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const error = new Error("Invalid URL.");
+    error.status = 400;
+    throw error;
+  }
+
+  User.findOne({ _id: userId })
+    .then((user) => {
+      if (!user) {
+        const error = new Error("No User Found!");
+        error.status = 404;
+        throw error;
+      }
+      res.status(200).json({
+        userId: user._id,
+        userName: user.userName,
+        email: user.email,
       });
     })
     .catch((err) => {
