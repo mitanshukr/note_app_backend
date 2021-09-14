@@ -6,6 +6,7 @@ const transport = require("../middleware/mailer-sendgrid");
 
 const User = require("../models/user");
 const { getRandomInt } = require("../utils/randomNumGenerator");
+const { capitalize } = require("../utils/getStringCapitalized");
 
 exports.postLogin = (req, res, next) => {
   const errors = validationResult(req);
@@ -74,8 +75,8 @@ exports.postSignup = (req, res, next) => {
   }
   const email = req.body.email;
   const password = req.body.password;
-  const firstName = req.body.firstName;
-  const lastName = req.body.lastName;
+  const firstName = capitalize(req.body.firstName);
+  const lastName = capitalize(req.body.lastName);
   const userName = email.split("@")[0] + getRandomInt(999, 99999);
 
   bcrypt
@@ -99,8 +100,8 @@ exports.postSignup = (req, res, next) => {
             user.firstName
           } to <strong>Immune Ink</strong></h3>
                   <p><a href="${
-                    process.env.ROOT_URL
-                  }/auth/verify-email/${user._id.toString()}/${
+                    process.env.FRONTEND_ROOT_URL
+                  }/verify-email/${user._id.toString()}/${
             user.verificationToken
           }">Please click here to verify your email.</a></p>
                   <p>We wish you a great journey ahead!</p>
@@ -111,7 +112,7 @@ exports.postSignup = (req, res, next) => {
     .then((mailStatus) => {
       res.status(201).json({
         message: "Signup Successful!",
-        emailStatus: mailStatus,
+        emailStatus: mailStatus.message,
         verification: `Please follow the link sent to your inbox to verify your Email.`,
         data: {
           userName: userName,
@@ -133,8 +134,11 @@ exports.getEmailVerified = (req, res, next) => {
 
   User.findOne({ _id: userId })
     .then((user) => {
-      if (user.isEmailVerified) {
-        return "ALREADY_VERIFIED";
+      if (user?.isEmailVerified) {
+        return {
+          message: "already_verified",
+          email: user?.email,
+        };
       }
       if (!user || user?.verificationToken !== verificationToken) {
         const error = new Error("Invalid URL! Make sure the URL is correct.");
@@ -148,8 +152,8 @@ exports.getEmailVerified = (req, res, next) => {
     .then((data) => {
       res.status(200).json({
         status: 200,
-        message: data?.isEmailVerified ? "SUCCESS" : data?.message,
-        userId: userId,
+        message: data?.isEmailVerified ? "success" : data?.message,
+        email: data?.email,
       });
     })
     .catch((err) => {
