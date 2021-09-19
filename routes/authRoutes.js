@@ -23,7 +23,7 @@ router.post(
       .custom((value) => {
         return User.findOne({ email: value }).then((user) => {
           if (user) {
-            return Promise.reject("Email already Exists!");
+            return Promise.reject("Email already Registered!");
           }
         });
       })
