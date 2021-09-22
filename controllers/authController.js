@@ -32,7 +32,7 @@ exports.postLogin = (req, res, next) => {
     })
     .then((isPwdValid) => {
       if (!isPwdValid) {
-        const error = new Error("The password is not valid!");
+        const error = new Error("The password is incorrect. Please try again!");
         error.status = 401;
         throw error;
       }
@@ -132,7 +132,7 @@ exports.postSignup = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log(err);
+      next(err);
     });
 };
 
@@ -181,7 +181,7 @@ exports.initForgotPassword = (req, res, next) => {
   User.findOne({ email: email })
     .then((user) => {
       if (!user) {
-        const error = new Error("No User found with the provided Email.");
+        const error = new Error("No User found with this Email.");
         error.status = 404;
         throw error;
       }
@@ -217,7 +217,6 @@ exports.initForgotPassword = (req, res, next) => {
       });
     })
     .catch((err) => {
-      console.log(err);
       next(err);
     });
 };
