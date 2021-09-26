@@ -1,5 +1,6 @@
 const Post = require("../models/post");
 const User = require("../models/user");
+const mongoose = require("mongoose");
 
 exports.createPost = (req, res, next) => {
   const newPost = new Post({
@@ -37,10 +38,73 @@ exports.editPost = (req, res, next) => {
     });
 };
 
+exports.deletePost = (req, res, next) => {
+  const postId = req.params.postId;
+  Post.findOneAndDelete({ _id: postId, "creator._id": req.userId })
+    .then((deletedPost) => {
+      if (!deletedPost)
+        res
+          .status(403)
+          .json({ message: "No Post Found or Unauthentic request." });
+      else
+        return User.find({
+          $or: [
+            { likes: { $in: [deletedPost._id] } },
+            { savedPosts: { $in: [deletedPost._id] } },
+          ],
+        });
+    })
+    .then((users) => {
+      if (!users || users?.length === 0) return;
+      users.forEach((user) => {
+        let postIdIndex = user.likes.findIndex(
+          (p_id) => p_id.toString() === postId.toString()
+        );
+        if (postIdIndex !== -1) {
+          user.likes.splice(postIdIndex, 1);
+        }
+        postIdIndex = user.savedPosts.findIndex(
+          (p_id) => p_id.toString() === postId.toString()
+        );
+        if (postIdIndex !== -1) {
+          user.savedPosts.splice(postIdIndex, 1);
+        }
+        user.save();
+      });
+    })
+    .then(() => {
+      res.status(204).json({
+        status: 204,
+        message: `Post: {${postId}} deleted successfully!`,
+      });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
 exports.getFeed = (req, res, next) => {
+  let leftOffId = req.query.leftOffId;
+  const limit = +req.query.limit || 2;
+  if (!mongoose.Types.ObjectId.isValid(leftOffId)) {
+    leftOffId = "999999999999999999999999";
+  }
+
   Post.find({ isPrivate: false })
+    .sort({ createdAt: -1 })
+    .where("_id")
+    .lt(leftOffId)
+    .limit(limit)
     .then((data) => {
-      res.status(200).json(data);
+      Post.countDocuments({ _id: { $lt: leftOffId }, isPrivate: false }).then(
+        (count) => {
+          res.status(200).json({
+            posts: data,
+            remaining: count - limit,
+            leftOffId: data.slice(-1)[0]._id,
+          });
+        }
+      );
     })
     .catch((err) => {
       next(err);
@@ -48,12 +112,19 @@ exports.getFeed = (req, res, next) => {
 };
 
 exports.getUserPosts = (req, res, next) => {
+  let leftOffId = req.query.leftOffId;
+  const limit = +req.query.limit || 2;
   const userId = req.params.userId;
   const privateFlag = req.query.private === "true";
+
+  if (!mongoose.Types.ObjectId.isValid(leftOffId)) {
+    leftOffId = "999999999999999999999999";
+  }
   let filter = {
-    "creator._id": userId,
     isPrivate: false,
+    "creator._id": userId,
   };
+
   if (privateFlag) {
     if (userId !== req.userId) {
       const error = new Error("403: Forbidden");
@@ -66,8 +137,19 @@ exports.getUserPosts = (req, res, next) => {
   }
 
   Post.find(filter)
+    .sort({ createdAt: -1 })
+    .where("_id")
+    .lt(leftOffId)
+    .limit(limit)
     .then((data) => {
-      res.status(200).json(data);
+      filter["_id"] = { $lt: leftOffId };
+      Post.countDocuments(filter).then((count) => {
+        res.status(200).json({
+          posts: data,
+          remaining: count - limit,
+          leftOffId: data.slice(-1)[0]._id,
+        });
+      });
     })
     .catch((err) => {
       next(err);
@@ -153,16 +235,86 @@ exports.postLike = (req, res, next) => {
     });
 };
 
-exports.postView = (req, res, next) => {
-  const postId = req.params.postId;
-  Post.findOne({ _id: postId })
-    .then((post) => {
-      post.viewCount++;
-      return post.save();
+exports.getLikedPosts = (req, res, next) => {
+  if (req.params.username[0] !== "@") {
+    const error = new Error("Invalid Username. Please add prefix @");
+    error.status = 422;
+    throw error;
+  }
+  let leftOffId = req.query.leftOffId;
+  const limit = +req.query.limit || 2;
+  const username = req.params.username.slice(1);
+  let filter = null;
+
+  if (!mongoose.Types.ObjectId.isValid(leftOffId)) {
+    leftOffId = "999999999999999999999999";
+  }
+
+  User.findOne({ userName: username })
+    .then((user) => {
+      if (!user) {
+        const error = new Error("User not Found");
+        error.status = 404;
+        throw error;
+      }
+      filter = { _id: { $in: user.likes }, isPrivate: false };
+      return Post.find(filter)
+        .sort({ createdAt: -1 })
+        .where("_id")
+        .lt(leftOffId)
+        .limit(limit);
     })
-    .then((response) => {
-      res.status(204).json({
-        message: "View Added",
+    .then((data) => {
+      filter["_id"] = { ...filter["_id"], $lt: leftOffId };
+      Post.countDocuments(filter).then((count) => {
+        res.status(200).json({
+          posts: data,
+          remaining: count - limit,
+          leftOffId: data.slice(-1)[0]._id,
+        });
+      });
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+exports.getPublicPosts = (req, res, next) => {
+  if (req.params.username[0] !== "@") {
+    const error = new Error("Invalid Username. Please add prefix @");
+    error.status = 422;
+    throw error;
+  }
+  const username = req.params.username.slice(1);
+  let leftOffId = req.query.leftOffId;
+  const limit = +req.query.limit || 2;
+  let filter = null;
+  if (!mongoose.Types.ObjectId.isValid(leftOffId)) {
+    leftOffId = "999999999999999999999999";
+  }
+
+  User.findOne({ userName: username })
+    .then((user) => {
+      if (!user) {
+        const error = new Error("User not Found");
+        error.status = 404;
+        throw error;
+      }
+      filter = { "creator._id": user._id, isPrivate: false };
+      return Post.find()
+        .sort({ createdAt: -1 })
+        .where("_id")
+        .lt(leftOffId)
+        .limit(limit);
+    })
+    .then((data) => {
+      filter["_id"] = { $lt: leftOffId };
+      Post.countDocuments(filter).then((count) => {
+        res.status(200).json({
+          posts: data,
+          remaining: count - limit,
+          leftOffId: data.slice(-1)[0]._id,
+        });
       });
     })
     .catch((err) => {
@@ -204,107 +356,55 @@ exports.savePost = (req, res, next) => {
 };
 
 exports.getSavedPosts = (req, res, next) => {
+  let leftOffId = req.query.leftOffId;
+  const limit = +req.query.limit || 2;
+  let filter = null;
+  if (!mongoose.Types.ObjectId.isValid(leftOffId)) {
+    leftOffId = "999999999999999999999999";
+  }
+
   User.findOne({ _id: req.userId })
     .then((user) => {
       return [...user.savedPosts];
     })
     .then((savedPosts) => {
-      Post.find({ _id: { $in: savedPosts } }).then((posts) => {
-        res.status(200).json(posts);
-      });
+      filter = { _id: { $in: savedPosts } };
+      return Post.find(filter)
+        .sort({ createdAt: -1 })
+        .where("_id")
+        .lt(leftOffId)
+        .limit(limit);
     })
-    .catch((err) => {
-      next(err);
-    });
-};
-
-exports.deletePost = (req, res, next) => {
-  const postId = req.params.postId;
-  Post.findOneAndDelete({ _id: postId, "creator._id": req.userId })
-    .then((deletedPost) => {
-      if (!deletedPost)
-        res
-          .status(403)
-          .json({ message: "No Post Found or Unauthentic request." });
-      else
-        return User.find({
-          $or: [
-            { likes: { $in: [deletedPost._id] } },
-            { savedPosts: { $in: [deletedPost._id] } },
-          ],
+    .then((data) => {
+      // posts.sort((a, b) => {
+      //   return savedPostsIds.indexOf(a._id) - savedPostsIds.indexOf(b._id);
+      // });
+      filter["_id"] = { ...filter["_id"], $lt: leftOffId };
+      Post.countDocuments(filter).then((count) => {
+        res.status(200).json({
+          posts: data,
+          remaining: count - limit,
+          leftOffId: data.slice(-1)[0]._id,
         });
-    })
-    .then((users) => {
-      if (!users || users?.length === 0) return;
-      users.forEach((user) => {
-        let postIdIndex = user.likes.findIndex(
-          (p_id) => p_id.toString() === postId.toString()
-        );
-        if (postIdIndex !== -1) {
-          user.likes.splice(postIdIndex, 1);
-        }
-        postIdIndex = user.savedPosts.findIndex(
-          (p_id) => p_id.toString() === postId.toString()
-        );
-        if (postIdIndex !== -1) {
-          user.savedPosts.splice(postIdIndex, 1);
-        }
-        user.save();
       });
     })
-    .then(() => {
+    .catch((err) => {
+      console.log(err);
+      next(err);
+    });
+};
+
+exports.postView = (req, res, next) => {
+  const postId = req.params.postId;
+  Post.findOne({ _id: postId })
+    .then((post) => {
+      post.viewCount++;
+      return post.save();
+    })
+    .then((response) => {
       res.status(204).json({
-        status: 204,
-        message: `Post: {${postId}} deleted successfully!`,
+        message: "View Added",
       });
-    })
-    .catch((err) => {
-      next(err);
-    });
-};
-
-exports.getLikedPosts = (req, res, next) => {
-  if (req.params.username[0] !== "@") {
-    const error = new Error("Invalid Username. Please add prefix @");
-    error.status = 422;
-    throw error;
-  }
-  const username = req.params.username.slice(1);
-  User.findOne({ userName: username })
-    .then((user) => {
-      if (!user) {
-        const error = new Error("User not Found");
-        error.status = 404;
-        throw error;
-      }
-      return Post.find({ _id: { $in: user.likes }, isPrivate: false });
-    })
-    .then((posts) => {
-      res.status(200).json(posts);
-    })
-    .catch((err) => {
-      next(err);
-    });
-};
-
-exports.getPublicPosts = (req, res, next) => {
-  if (req.params.username[0] !== "@") {
-    const error = new Error("Invalid Username. Please add prefix @");
-    error.status = 422;
-    throw error;
-  }
-  const username = req.params.username.slice(1);
-  User.findOne({ userName: username })
-    .then((user) => {
-      if (!user) {
-        const error = new Error("User not Found");
-        error.status = 404;
-        throw error;
-      }
-      return Post.find({ "creator._id": user._id, isPrivate: false });
-    })
-    .then((posts) => {
-      res.status(200).json(posts);
     })
     .catch((err) => {
       next(err);
