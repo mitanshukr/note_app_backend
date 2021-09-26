@@ -23,6 +23,9 @@ const postSchema = new mongoose.Schema(
     likes: [
       { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     ],
+    savedby: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    ],
     viewCount: { type: "Number", default: 0 },
     creator: {
       _id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

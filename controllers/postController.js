@@ -214,7 +214,7 @@ exports.postLike = (req, res, next) => {
         if (postIdIndex < 0) {
           user.likes.push(postId);
         }
-      } else if (!likeStatus) {
+      } else {
         message = "Post like removed Successfully!";
         if (postIdIndex >= 0) {
           user.likes.splice(postIdIndex, 1);
@@ -340,9 +340,21 @@ exports.savePost = (req, res, next) => {
         postSaved = true;
         message = "Post added to Saved Items.";
       }
-      return user.save();
+      user.save();
+      return Post.findOne({ _id: postId });
     })
-    .then((user) => {
+    .then((post) => {
+      const userIdIndex = post.savedby.findIndex((userId) => {
+        return req.userId.toString() === userId.toString();
+      });
+      if (postSaved && userIdIndex < 0) {
+        post.savedby.push(req.userId);
+      } else if (!postSaved && userIdIndex >= 0) {
+        post.savedby.splice(userIdIndex, 1);
+      }
+      return post.save();
+    })
+    .then((post) => {
       res.status(202).json({
         postSaved: postSaved,
         message: message,
@@ -351,6 +363,7 @@ exports.savePost = (req, res, next) => {
       });
     })
     .catch((err) => {
+      console.log(err);
       next(err);
     });
 };
@@ -362,9 +375,10 @@ exports.getSavedPosts = (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(leftOffId)) {
     leftOffId = "999999999999999999999999";
   }
-
+  // let savedPostsIds = [];
   User.findOne({ _id: req.userId })
     .then((user) => {
+      // savedPostsIds = [...user.savedPosts];
       return [...user.savedPosts];
     })
     .then((savedPosts) => {
@@ -376,8 +390,8 @@ exports.getSavedPosts = (req, res, next) => {
         .limit(limit);
     })
     .then((data) => {
-      // posts.sort((a, b) => {
-      //   return savedPostsIds.indexOf(a._id) - savedPostsIds.indexOf(b._id);
+      // data.sort((a, b) => {
+      //   return savedPostsIds.indexOf(a._id.toString()) - savedPostsIds.indexOf(b._id.toString());
       // });
       filter["_id"] = { ...filter["_id"], $lt: leftOffId };
       Post.countDocuments(filter).then((count) => {
