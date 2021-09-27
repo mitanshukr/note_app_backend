@@ -117,6 +117,11 @@ exports.getUserPosts = (req, res, next) => {
   const userId = req.params.userId;
   const privateFlag = req.query.private === "true";
 
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const error = new Error("Invalid User Id.");
+    error.status = 400;
+    throw error;
+  }
   if (!mongoose.Types.ObjectId.isValid(leftOffId)) {
     leftOffId = "999999999999999999999999";
   }
@@ -158,6 +163,11 @@ exports.getUserPosts = (req, res, next) => {
 
 exports.getSinglePost = (req, res, next) => {
   const postId = req.params.postId;
+  if (!mongoose.Types.ObjectId.isValid(postId)) {
+    const error = new Error("Invalid Post Id.");
+    error.status = 400;
+    throw error;
+  }
   Post.findOne({ _id: postId, isPrivate: false })
     .then((data) => {
       if (!data) res.status(404).json({ message: "No Post Found!" });
@@ -170,6 +180,11 @@ exports.getSinglePost = (req, res, next) => {
 
 exports.getSinglePrivatePost = (req, res, next) => {
   const postId = req.params.postId;
+  if (!mongoose.Types.ObjectId.isValid(postId)) {
+    const error = new Error("Invalid Post Id.");
+    error.status = 400;
+    throw error;
+  }
   Post.findOne({ _id: postId, isPrivate: true })
     .then((data) => {
       if (data.creator._id.toString() !== req.userId.toString()) {
