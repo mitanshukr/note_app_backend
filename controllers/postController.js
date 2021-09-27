@@ -101,7 +101,7 @@ exports.getFeed = (req, res, next) => {
           res.status(200).json({
             posts: data,
             remaining: count - limit,
-            leftOffId: data.slice(-1)[0]._id,
+            leftOffId: data.slice(-1)[0]?._id,
           });
         }
       );
@@ -152,7 +152,7 @@ exports.getUserPosts = (req, res, next) => {
         res.status(200).json({
           posts: data,
           remaining: count - limit,
-          leftOffId: data.slice(-1)[0]._id,
+          leftOffId: data.slice(-1)[0]?._id,
         });
       });
     })
@@ -285,7 +285,7 @@ exports.getLikedPosts = (req, res, next) => {
         res.status(200).json({
           posts: data,
           remaining: count - limit,
-          leftOffId: data.slice(-1)[0]._id,
+          leftOffId: data.slice(-1)[0]?._id,
         });
       });
     })
@@ -328,7 +328,7 @@ exports.getPublicPosts = (req, res, next) => {
         res.status(200).json({
           posts: data,
           remaining: count - limit,
-          leftOffId: data.slice(-1)[0]._id,
+          leftOffId: data.slice(-1)[0]?._id,
         });
       });
     })
@@ -413,7 +413,7 @@ exports.getSavedPosts = (req, res, next) => {
         res.status(200).json({
           posts: data,
           remaining: count - limit,
-          leftOffId: data.slice(-1)[0]._id,
+          leftOffId: data.slice(-1)[0]?._id,
         });
       });
     })
