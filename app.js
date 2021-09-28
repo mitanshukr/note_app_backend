@@ -29,11 +29,11 @@ app.use("/auth", authRoutes);
 app.use("/user", userRoutes);
 app.use("/post", postRoutes);
 
-// app.get("/", (req, res, next) => {
-//   res.json({
-//     test: "hello",
-//   });
-// });
+app.get("/hello", (req, res, next) => {
+  res.json({
+    test: "hello! Nice to meet you :)",
+  });
+});
 
 app.use((req, res, next) => {
   const error = new Error("Invalid Endpoint.");

@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 const transport = require("../middleware/mailer-sendgrid");
+const mongoose = require("mongoose");
 
 const User = require("../models/user");
 const { getRandomInt } = require("../utils/randomNumGenerator");
@@ -32,7 +33,7 @@ exports.postLogin = (req, res, next) => {
     })
     .then((isPwdValid) => {
       if (!isPwdValid) {
-        const error = new Error("The password is incorrect. Please try again!");
+        const error = new Error("The password is incorrect.");
         error.status = 401;
         throw error;
       }
@@ -140,6 +141,11 @@ exports.getEmailVerified = (req, res, next) => {
   const userId = req.params.userId;
   const verificationToken = req.params.verificationToken;
 
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const error = new Error("Invalid User Id.");
+    error.status = 400;
+    throw error;
+  }
   User.findOne({ _id: userId })
     .then((user) => {
       if (user?.isEmailVerified) {
@@ -149,7 +155,7 @@ exports.getEmailVerified = (req, res, next) => {
         };
       }
       if (!user || user?.verificationToken !== verificationToken) {
-        const error = new Error("Invalid URL! Make sure the URL is correct.");
+        const error = new Error("Invalid URL");
         error.status = 400;
         throw error;
       }

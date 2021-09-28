@@ -20,6 +20,7 @@ router.post(
   [
     body("email")
       .isEmail()
+      .withMessage("Invalid Email.")
       .custom((value) => {
         return User.findOne({ email: value }).then((user) => {
           if (user) {
@@ -56,10 +57,10 @@ router.post("/reset-password", [
       : Promise.resolve();
   }),
   body("resetToken")
-      .trim()
-      .not()
-      .isEmpty()
-      .withMessage("Please provide a Reset Token."),
+    .trim()
+    .not()
+    .isEmpty()
+    .withMessage("Please provide a Reset Token."),
   body("newPassword")
     .trim()
     .isLength({ min: 5 })

@@ -21,6 +21,12 @@ exports.createPost = (req, res, next) => {
 
 exports.editPost = (req, res, next) => {
   const postId = req.params.postId;
+  if (!mongoose.Types.ObjectId.isValid(postId)) {
+    const error = new Error("Invalid Post Id.");
+    error.status = 400;
+    throw error;
+  }
+
   Post.findOneAndUpdate({ _id: postId, "creator._id": req.userId }, req.body, {
     new: true,
   })
@@ -186,14 +192,15 @@ exports.getSinglePrivatePost = (req, res, next) => {
     throw error;
   }
   Post.findOne({ _id: postId, isPrivate: true })
-    .then((data) => {
-      if (data.creator._id.toString() !== req.userId.toString()) {
+    .then((post) => {
+      if (!post) {
+        return res.status(404).json({ message: "No Post Found!" });
+      }
+      if (post.creator?._id.toString() !== req.userId.toString()) {
         const error = new Error("403 : Forbidden");
         error.status = 403;
         throw error;
-      }
-      if (!data) res.status(404).json({ message: "No Post Found!" });
-      else res.status(200).json(data);
+      } else res.status(200).json(post);
     })
     .catch((err) => {
       next(err);
