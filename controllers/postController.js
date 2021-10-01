@@ -323,7 +323,7 @@ exports.getPublicPosts = (req, res, next) => {
         throw error;
       }
       filter = { "creator._id": user._id, isPrivate: false };
-      return Post.find()
+      return Post.find(filter)
         .sort({ createdAt: -1 })
         .where("_id")
         .lt(leftOffId)

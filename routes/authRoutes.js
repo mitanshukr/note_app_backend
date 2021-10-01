@@ -51,11 +51,6 @@ router.post(
 );
 
 router.post("/reset-password", [
-  body("userId").custom((value) => {
-    return !mongoose.Types.ObjectId.isValid(value)
-      ? Promise.reject("Invalid UserId! Make Sure the URL is Correct.")
-      : Promise.resolve();
-  }),
   body("resetToken")
     .trim()
     .not()

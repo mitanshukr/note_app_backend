@@ -204,6 +204,8 @@ exports.initForgotPassword = (req, res, next) => {
                     process.env.FRONTEND_ROOT_URL
                   }/reset-password/${user._id.toString()}/${
             user.resetToken
+          }?email=${
+            user.email
           }">Please click here to set a new Password.</a></p>
           <p>Note that, this link is valid for only 1hr.</p>
           <small>If you did not send the request, please ignore this mail.</small>
@@ -240,10 +242,18 @@ exports.updatePassword = (req, res, next) => {
   const resetToken = req.body.resetToken;
   const newPassword = req.body.newPassword;
 
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const error = new Error("Invalid URL! Make sure the URL is correct.");
+    error.status = 400;
+    throw error;
+  }
+
   User.findOne({ _id: userId })
     .then((user) => {
       if (!user || user?.resetToken !== resetToken) {
-        const error = new Error("Invalid URL! Make sure the URL is correct.");
+        const error = new Error(
+          "Invalid URL! Make sure to use the latest link."
+        );
         error.status = 400;
         throw error;
       }
