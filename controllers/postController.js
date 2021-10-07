@@ -301,7 +301,7 @@ exports.getLikedPosts = (req, res, next) => {
     });
 };
 
-exports.getPublicPosts = (req, res, next) => {
+exports.getPublicPostsByUsername = (req, res, next) => {
   if (req.params.username[0] !== "@") {
     const error = new Error("Invalid Username. Please add prefix @");
     error.status = 422;
