@@ -1,5 +1,5 @@
 const User = require("../models/user");
-// const mongoose = require("mongoose");
+const mongoose = require("mongoose");
 
 exports.getUser = (req, res, next) => {
   const userId = req.params.userId;
