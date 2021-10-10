@@ -258,21 +258,20 @@ exports.postLike = (req, res, next) => {
 };
 
 exports.getLikedPosts = (req, res, next) => {
-  if (req.params.username[0] !== "@") {
-    const error = new Error("Invalid Username. Please add prefix @");
-    error.status = 422;
-    throw error;
+  let userName = req.params.username;
+  if (userName[0] === "@") {
+    userName = userName.substring(1);
   }
+
   let leftOffId = req.query.leftOffId;
   const limit = +req.query.limit || 2;
-  const username = req.params.username.slice(1);
   let filter = null;
 
   if (!mongoose.Types.ObjectId.isValid(leftOffId)) {
     leftOffId = "999999999999999999999999";
   }
 
-  User.findOne({ userName: username })
+  User.findOne({ userName: userName })
     .then((user) => {
       if (!user) {
         const error = new Error("User not Found");
@@ -302,12 +301,11 @@ exports.getLikedPosts = (req, res, next) => {
 };
 
 exports.getPublicPostsByUsername = (req, res, next) => {
-  if (req.params.username[0] !== "@") {
-    const error = new Error("Invalid Username. Please add prefix @");
-    error.status = 422;
-    throw error;
+  let userName = req.params.username;
+  if (userName[0] === "@") {
+    userName = userName.substring(1);
   }
-  const username = req.params.username.slice(1);
+
   let leftOffId = req.query.leftOffId;
   const limit = +req.query.limit || 2;
   let filter = null;
@@ -315,7 +313,7 @@ exports.getPublicPostsByUsername = (req, res, next) => {
     leftOffId = "999999999999999999999999";
   }
 
-  User.findOne({ userName: username })
+  User.findOne({ userName: userName })
     .then((user) => {
       if (!user) {
         const error = new Error("User not Found");

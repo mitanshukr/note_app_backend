@@ -49,13 +49,12 @@ exports.getUser = (req, res, next) => {
 };
 
 exports.getUserByUsername = (req, res, next) => {
-  if (req.params.username[0] !== "@") {
-    const error = new Error("Invalid Username. Please add prefix @");
-    error.status = 422;
-    throw error;
+  let userName = req.params.username;
+  if (userName[0] === "@") {
+    userName = userName.substring(1);
   }
-  const username = req.params.username.slice(1);
-  User.findOne({ userName: username })
+
+  User.findOne({ userName: userName })
     .then((user) => {
       if (!user) {
         const error = new Error("User not Found");
@@ -99,6 +98,33 @@ exports.updateUserInfo = (req, res, next) => {
         throw error;
       } else {
         res.status(204).json(data);
+      }
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+exports.getUsernameAvailStatus = (req, res, next) => {
+  let userName = req.params.username.toLowerCase();
+  if (userName[0] === "@") {
+    userName = userName.substring(1);
+  }
+
+  User.findOne({ userName: userName })
+    .then((user) => {
+      if (user) {
+        res.status(200).json({
+          userName: userName,
+          status: false,
+          message: "Username Taken!",
+        });
+      } else {
+        res.status(200).json({
+          userName: userName,
+          status: true,
+          message: "Username Available!",
+        });
       }
     })
     .catch((err) => {
