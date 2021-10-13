@@ -99,15 +99,15 @@ exports.postSignup = (req, res, next) => {
         lastName: lastName,
         isEmailVerified: false,
         verificationToken: crypto.randomBytes(32).toString("hex"),
+        verificationTokenExpiry: Date.now() + 21600 * 1000, // expiryIn: 6hrs (21600*1000 ms)
       });
       return newUser.save().then((user) => {
         return transport.sendMail({
           to: user.email,
           from: process.env.SENDGRID_EMAIL,
-          subject: "Sign up Successful!",
-          html: `<h3>Welcome ${
-            user.firstName
-          } to <strong>Immune Ink</strong></h3>
+          subject: "Welcome to Immune Ink :)",
+          html: `<p>Hi ${user.firstName},<br><br>
+                We are delighted to see you join us.</p>
                   <p><a href="${
                     process.env.FRONTEND_ROOT_URL
                   }/verify-email/${user._id.toString()}/${
@@ -121,7 +121,7 @@ exports.postSignup = (req, res, next) => {
     .then((mailStatus) => {
       res.status(201).json({
         message: "Signup Successful!",
-        emailStatus: mailStatus.message,
+        emailStatus: mailStatus?.message,
         verification: `Please follow the link sent to your inbox to verify your Email.`,
         data: {
           userName: userName,
@@ -137,45 +137,7 @@ exports.postSignup = (req, res, next) => {
     });
 };
 
-exports.getEmailVerified = (req, res, next) => {
-  const userId = req.params.userId;
-  const verificationToken = req.params.verificationToken;
-
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    const error = new Error("Invalid User Id.");
-    error.status = 400;
-    throw error;
-  }
-  User.findOne({ _id: userId })
-    .then((user) => {
-      if (user?.isEmailVerified) {
-        return {
-          message: "already_verified",
-          email: user?.email,
-        };
-      }
-      if (!user || user?.verificationToken !== verificationToken) {
-        const error = new Error("Invalid URL");
-        error.status = 400;
-        throw error;
-      }
-      user.isEmailVerified = true;
-      user.verificationToken = null;
-      return user.save();
-    })
-    .then((data) => {
-      res.status(200).json({
-        status: 200,
-        message: data?.isEmailVerified ? "success" : data?.message,
-        email: data?.email,
-      });
-    })
-    .catch((err) => {
-      next(err);
-    });
-};
-
-exports.initForgotPassword = (req, res, next) => {
+exports.sendPasswordResetLink = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const error = new Error("Input Validation Failed!");
@@ -197,9 +159,10 @@ exports.initForgotPassword = (req, res, next) => {
         return transport.sendMail({
           to: user.email,
           from: process.env.SENDGRID_EMAIL,
-          subject: "Password Reset Link",
-          html: `<h3>Hi ${user.firstName},</h3>
-                  <p>Please find the Password Reset link below. Click on the link to reset your password.</p>
+          subject: "Password Reset Link - Immune Ink",
+          html: `<p>Hi ${user.firstName},<br><br>
+              We have received a Password Reset request for your Account
+              registered with us. Please find the Password Reset link below. Click on the link to reset your password.</p>
                   <p><a href="${
                     process.env.FRONTEND_ROOT_URL
                   }/reset-password/${user._id.toString()}/${
@@ -207,8 +170,10 @@ exports.initForgotPassword = (req, res, next) => {
           }?email=${
             user.email
           }">Please click here to set a new Password.</a></p>
-          <p>Note that, this link is valid for only 1hr.</p>
-          <small>If you did not send the request, please ignore this mail.</small>
+          <p>Please note that the above link is valid for one use only and expires after 1 hour. Make sure to use the latest link.</p>
+          <small><i>If you did not send the request then Please ignore this mail, and immediately change your Password.</i></small>
+              <br>
+              <p>Regards,<br>Team Immune Ink</p><br>
           <hr>
           <small>Confidential. Please do not share. This email is sent to ${
             user.email
@@ -218,18 +183,14 @@ exports.initForgotPassword = (req, res, next) => {
       });
     })
     .then((mailStatus) => {
-      res.status(200).json({
-        emailStatus: mailStatus.message,
-        email: email,
-        message: "Reset Link is sent to your Inbox. Valid for an Hour.",
-      });
+      res.status(200).json(mailStatus);
     })
     .catch((err) => {
       next(err);
     });
 };
 
-exports.updatePassword = (req, res, next) => {
+exports.resetPassword = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     const error = new Error("Input Validation Failed!");
@@ -258,7 +219,7 @@ exports.updatePassword = (req, res, next) => {
         throw error;
       }
       if (user.resetTokenExpiry <= Date.now()) {
-        const error = new Error("Reset URL Expired.");
+        const error = new Error("URL Expired.");
         error.status = 410;
         throw error;
       }

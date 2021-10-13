@@ -68,6 +68,7 @@ const userSchema = new mongoose.Schema({
   resetTokenExpiry: { type: Date },
   isEmailVerified: Boolean,
   verificationToken: { type: String },
+  verificationTokenExpiry: { type: Date },
 });
 
 module.exports = mongoose.model("User", userSchema);

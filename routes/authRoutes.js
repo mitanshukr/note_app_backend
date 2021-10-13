@@ -47,7 +47,7 @@ router.post(
 router.post(
   "/forgot-password",
   body("email").isEmail().not().isEmpty().normalizeEmail(),
-  authController.initForgotPassword
+  authController.sendPasswordResetLink
 );
 
 router.post("/reset-password", [
@@ -62,12 +62,7 @@ router.post("/reset-password", [
     .withMessage("Password must be at least 5 chars long.")
     .matches(/\d/)
     .withMessage("Password must contain a number."),
-  authController.updatePassword,
+  authController.resetPassword,
 ]);
-
-router.get(
-  "/verify-email/:userId/:verificationToken",
-  authController.getEmailVerified
-);
 
 module.exports = router;

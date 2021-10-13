@@ -1,5 +1,7 @@
-const User = require("../models/user");
+const crypto = require("crypto");
 const mongoose = require("mongoose");
+const transport = require("../middleware/mailer-sendgrid");
+const User = require("../models/user");
 
 exports.getUser = (req, res, next) => {
   const userId = req.params.userId;
@@ -117,7 +119,7 @@ exports.getUsernameAvailStatus = (req, res, next) => {
         res.status(200).json({
           userName: userName,
           status: false,
-          message: "Username Taken!",
+          message: "Username not available!",
         });
       } else {
         res.status(200).json({
@@ -126,6 +128,106 @@ exports.getUsernameAvailStatus = (req, res, next) => {
           message: "Username Available!",
         });
       }
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+exports.sendEmailVerificationLink = (req, res, next) => {
+  const userId = req.params.userId;
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const error = new Error("Invalid User Id.");
+    error.status = 400;
+    throw error;
+  }
+
+  User.findOne({ _id: userId })
+    .then((user) => {
+      if (!user) {
+        const error = new Error("No User Found!");
+        error.status = 404;
+        throw error;
+      }
+      if (user?.isEmailVerified) {
+        return "already_verified";
+      }
+      user.isEmailVerified = false;
+      user.verificationToken = crypto.randomBytes(32).toString("hex");
+      user.verificationTokenExpiry = Date.now() + 21600 * 1000; // expiryIn: 6hrs (21600*1000 ms)
+      return user.save();
+    })
+    .then((user) => {
+      if (user === "already_verified") return { message: "already_verified" };
+      else
+        return transport.sendMail({
+          to: user.email,
+          from: process.env.SENDGRID_EMAIL,
+          subject: "Email Verification Link - Immune Ink",
+          html: `<p>Hi ${user.firstName},<br><br>
+              We have received an Email Verification request for your Account
+              registered with us. <a href="${
+                process.env.FRONTEND_ROOT_URL
+              }/verify-email/${user._id.toString()}/${
+            user.verificationToken
+          }">Please click here to verify your email.</a></p>
+              <p>Please note that the above link is valid for one use only and expires after 6 hours. Make sure to use the latest link.</p>
+              <br>
+              <p>Regards,<br>Team Immune Ink</p><br>
+              <hr>
+          <small>Confidential. Please do not share. This email is sent to ${
+            user.email
+          }</small><br><br>
+          <small>If you are not the intended recipient of this message, you are not authorized to read, print, retain, copy or disseminate any part of this message. If you have received this message in error, please destroy and delete all copies and notify the sender by return e-mail. Regardless of content, this e-mail shall not operate to bind Immune Ink Company or any of its affiliates to any order or other contract unless pursuant to explicit written agreement or government initiative expressly permitting the use of e-mail for such purpose.</small>`,
+        });
+    })
+    .then((mailStatus) => {
+      res.status(200).json(mailStatus);
+    })
+    .catch((err) => {
+      next(err);
+    });
+};
+
+exports.getEmailVerified = (req, res, next) => {
+  const userId = req.params.userId;
+  const verificationToken = req.params.verificationToken;
+
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const error = new Error("Invalid User Id.");
+    error.status = 400;
+    throw error;
+  }
+
+  User.findOne({ _id: userId })
+    .then((user) => {
+      if (user?.isEmailVerified) {
+        return {
+          message: "already_verified",
+          email: user?.email,
+        };
+      }
+      if (!user || user?.verificationToken !== verificationToken) {
+        const error = new Error("Invalid URL");
+        error.status = 400;
+        throw error;
+      }
+      if (user?.verificationTokenExpiry <= Date.now()) {
+        const error = new Error("URL Expired.");
+        error.status = 410;
+        throw error;
+      }
+      user.isEmailVerified = true;
+      user.verificationToken = null;
+      user.verificationTokenExpiry = null;
+      return user.save();
+    })
+    .then((data) => {
+      res.status(200).json({
+        status: 200,
+        message: data?.isEmailVerified ? "success" : data?.message,
+        email: data?.email,
+      });
     })
     .catch((err) => {
       next(err);
