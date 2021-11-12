@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const transport = require("../middleware/mailer-sendgrid");
 const User = require("../models/user");
 
+// localhost:8000/user/getUser/{userid}
+// socket.emit(data)
 exports.getUser = (req, res, next) => {
   const userId = req.params.userId;
   const detailedInfo = req.query.detailedInfo === "true";
@@ -259,3 +261,6 @@ exports.getEmailVerified = (req, res, next) => {
 //       next(err);
 //     });
 // };
+
+// User.watch().
+//     on('change', data => console.log(new Date(), data));
